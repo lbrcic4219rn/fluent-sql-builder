@@ -197,9 +197,3 @@ validator and the compiler and compare the full output against a golden file in
 To create a new baseline after an intentional change, delete the golden file and run the tests
 twice: the first run writes the new baseline and fails, the second verifies it.
 
-## Known limitations
-
-Mixed `AND`/`OR` conditions are emitted without parentheses, so SQL precedence applies.
-
-Identifiers that need quoting in PostgreSQL (mixed case, spaces, reserved words) cannot be used as
-table or column names.
