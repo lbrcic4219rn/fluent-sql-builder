@@ -1,6 +1,7 @@
-# bp
+# fluent-sql-builder
 
-A small desktop app that compiles a fluent query language into SQL, runs it against PostgreSQL, and shows the result set in a Swing table.
+Desktop app that compiles a small fluent query language into parameterised PostgreSQL and shows the
+results in a Swing table.
 
 You type something like this:
 
@@ -53,6 +54,9 @@ docker compose up -d
 This starts PostgreSQL 17 on `BP_POSTGRES_PORT`, creating the database and user named by
 `BP_POSTGRES_DATABASE` and `BP_POSTGRES_USERNAME`. Data persists in the `postgres_data` volume.
 
+The database starts empty. The repository ships no schema or seed data, so create or import your own
+tables before running queries. The examples below assume `employees` and `jobs` tables.
+
 ## Running the app
 
 ```bash
@@ -88,11 +92,11 @@ wrote them.
 | `WhereBetween(col, low, high)`              | 3                    | `col BETWEEN ? AND ?`           |
 | `WhereIn(col)` + `ParameterList(v, ...)`    | 1 + 1 or more        | `col IN (?, ...)`               |
 | `WhereStartsWith` / `EndsWith` / `Contains` | 2                    | `col LIKE ?`                    |
-| `WhereInQ(col, queryVar)`                   | 2                    | `col IN (<subquery>)`          |
-| `WhereEqQ(col, queryVar)`                   | 2                    | `col = (<subquery>)`           |
+| `WhereInQ(col, queryVar)`                   | 2                    | `col IN (<subquery>)`           |
+| `WhereEqQ(col, queryVar)`                   | 2                    | `col = (<subquery>)`            |
 | `Join(table)` + `On(a, op, b)`              | 1 + 3                | `JOIN table ON a op b`          |
 | `GroupBy(col, ...)`                         | 1 or more            | `GROUP BY col, ...`             |
-| `Avg` / `Count` / `Min` / `Max`             | column, optional alias | `AVG(col) AS alias`           |
+| `Avg` / `Count` / `Min` / `Max`             | 1 or 2 (col, alias)  | `AVG(col) AS alias`             |
 | `Having` / `AndHaving` / `OrHaving`         | 3 (alias, op, value) | `HAVING <aggregate> op ?`       |
 | `OrderBy` / `OrderByDesc`                   | 1 or more            | `ORDER BY col, ...`             |
 | `Date(dd/mm/yyyy, alias)`                   | 2                    | nothing directly — see below    |
@@ -164,7 +168,7 @@ layer renders.
 | ------------------------ | ------------------------------------------------------------ |
 | `app`                    | Entry point and orchestration                                |
 | `querybuilder.parser`    | Tokenizer, parser and the function registry                  |
-| `querybuilder.validator` | Validation rules that produce a `ValidationResult`        |
+| `querybuilder.validator` | Validation rules that produce a `ValidationResult`           |
 | `querybuilder.compiler`  | Turns statements into a parameterised `SELECT`               |
 | `database`               | Configuration and a repository over a Hikari connection pool |
 | `gui.swingimp`           | Swing frontend                                               |
@@ -190,8 +194,8 @@ The two test classes are characterization tests: they run a fixed corpus of quer
 validator and the compiler and compare the full output against a golden file in
 `src/test/resources`. A diff means output changed, not necessarily that it got worse.
 
-To create a new baseline after an intentional change, delete the golden file and run the tests twice: the first
-run writes the new baseline and fails, the second verifies it.
+To create a new baseline after an intentional change, delete the golden file and run the tests
+twice: the first run writes the new baseline and fails, the second verifies it.
 
 ## Known limitations
 
