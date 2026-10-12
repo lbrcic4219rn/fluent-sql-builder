@@ -1,11 +1,13 @@
 package querybuilder.validator;
 
+import querybuilder.parser.Statement;
+
 import java.util.List;
 
-public record ValidationResult(List<Query> queries, List<String> errors) {
+public record ValidationResult(List<Statement> statements, List<String> errors) {
 
     public ValidationResult {
-        queries = List.copyOf(queries);
+        statements = List.copyOf(statements);
         errors = List.copyOf(errors);
     }
 

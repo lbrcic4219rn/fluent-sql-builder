@@ -1,7 +1,6 @@
 plugins {
     java
     application
-    id("org.sonarqube")
 }
 
 repositories {
@@ -14,18 +13,18 @@ java {
     }
 }
 
-dependencies {
-    implementation(libs.mssql.jdbc)
-    implementation(libs.hikaricp)
-    runtimeOnly(libs.slf4j.nop)
+val formatter: Configuration = configurations.create("formatter")
 
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
-    testCompileOnly(libs.lombok)
-    testAnnotationProcessor(libs.lombok)
+dependencies {
+    implementation(libs.postgresql)
+    implementation(libs.hikaricp)
+    runtimeOnly(libs.slf4j.jdk14)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+
+    formatter(libs.google.java.format)
 }
 
 tasks.test {
@@ -36,14 +35,23 @@ application {
     mainClass = "app.Main"
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
+tasks.named<JavaExec>("run") {
+    val envFile = file(".env")
+    if (envFile.isFile) {
+        envFile.readLines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+            .forEach {
+                val name = it.substringBefore("=").trim()
+                if (System.getenv(name) == null) {
+                    environment(name, it.substringAfter("=").trim())
+                }
+            }
+    }
 }
 
-val formatter: Configuration = configurations.create("formatter")
-
-dependencies {
-    formatter(libs.google.java.format)
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
 }
 
 fun javaSources(): List<String> =
@@ -61,13 +69,18 @@ val formatterJvmArgs =
         "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
     )
 
-tasks.register<JavaExec>("formatCheck") {
-    group = "verification"
-    description = "Fails if any source file is not formatted."
-    classpath = formatter
-    mainClass = "com.google.googlejavaformat.java.Main"
-    jvmArgs = formatterJvmArgs
-    args = listOf("--aosp", "--dry-run", "--set-exit-if-changed") + javaSources()
+val formatCheck =
+    tasks.register<JavaExec>("formatCheck") {
+        group = "verification"
+        description = "Fails if any source file is not formatted."
+        classpath = formatter
+        mainClass = "com.google.googlejavaformat.java.Main"
+        jvmArgs = formatterJvmArgs
+        args = listOf("--aosp", "--dry-run", "--set-exit-if-changed") + javaSources()
+    }
+
+tasks.check {
+    dependsOn(formatCheck)
 }
 
 tasks.register<JavaExec>("format") {
@@ -77,20 +90,4 @@ tasks.register<JavaExec>("format") {
     mainClass = "com.google.googlejavaformat.java.Main"
     jvmArgs = formatterJvmArgs
     args = listOf("--aosp", "--replace") + javaSources()
-}
-
-sonar {
-    properties {
-        property("sonar.projectKey", "bp")
-        property("sonar.projectName", "bp")
-        property("sonar.sources", "src/main/java")
-        property("sonar.tests", "src/test/java")
-        property("sonar.java.source", "21")
-        property("sonar.java.binaries", "build/classes/java/main")
-        property("sonar.sourceEncoding", "UTF-8")
-        property(
-            "sonar.host.url",
-            providers.gradleProperty("sonar.host.url").getOrElse("http://localhost:9000"),
-        )
-    }
 }

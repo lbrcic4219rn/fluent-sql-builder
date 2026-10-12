@@ -1,11 +1,11 @@
 package querybuilder.validator.rule;
 
-import querybuilder.validator.Query;
-import querybuilder.validator.Validator;
+import querybuilder.parser.Statement;
 
-import java.util.Map;
+import java.util.List;
+import java.util.Set;
 
 public interface IRule {
 
-    void checkRule(Query query, Map<String, Integer> supportedFunctions, Validator validator);
+    List<String> check(Statement statement, Set<String> declaredQueries);
 }

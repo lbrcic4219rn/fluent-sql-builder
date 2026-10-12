@@ -1,169 +1,151 @@
 SOURCE: var a = new Query("departments").Select("manager_id", "location_id")
-  QUERY name=a content= a = new Query("departments").Select("manager_id", "location_id") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select] 
+  STATEMENT a: Query[departments] Select[manager_id, location_id]
 SOURCE: var a = new Query("departments").Select("manager_id").OrderBy("manager_id")
-  QUERY name=a content= a = new Query("departments").Select("manager_id").OrderBy("manager_id") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, OrderBy] 
+  STATEMENT a: Query[departments] Select[manager_id] OrderBy[manager_id]
 SOURCE: var a = new Query("employees").Select("last_name").OrderByDesc("last_name")
-  QUERY name=a content= a = new Query("employees").Select("last_name").OrderByDesc("last_name") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, OrderByDesc] 
+  STATEMENT a: Query[employees] Select[last_name] OrderByDesc[last_name]
 SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG")
-  QUERY name=a content= a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Where] 
+  STATEMENT a: Query[employees] Select[last_name] Where[job_id, =, IT_PROG]
 SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").AndWhere("manager_id","=","100")
-  QUERY name=a content= a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").AndWhere("manager_id","=","100") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Where, AndWhere] 
-SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").OrWhere("manager_id","=","100")
-  QUERY name=a content= a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").OrWhere("manager_id","=","100") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Where, OrWhere] 
+  STATEMENT a: Query[employees] Select[last_name] Where[job_id, =, IT_PROG] AndWhere[manager_id, =, 100]
+SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").OrWhere("manager_id","=",100)
+  STATEMENT a: Query[employees] Select[last_name] Where[job_id, =, IT_PROG] OrWhere[manager_id, =, 100]
 SOURCE: var a = new Query("employees").Select("min_salary").WhereBetween("min_salary","1000","5000")
-  QUERY name=a content= a = new Query("employees").Select("min_salary").WhereBetween("min_salary","1000","5000") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, WhereBetween] 
+  STATEMENT a: Query[employees] Select[min_salary] WhereBetween[min_salary, 1000, 5000]
 SOURCE: var a = new Query("employees").Select("last_name").WhereIn("job_id").ParameterList("IT_PROG","SA_REP")
-  QUERY name=a content= a = new Query("employees").Select("last_name").WhereIn("job_id").ParameterList("IT_PROG","SA_REP") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, WhereIn, ParameterList] 
+  STATEMENT a: Query[employees] Select[last_name] WhereIn[job_id] ParameterList[IT_PROG, SA_REP]
 SOURCE: var a = new Query("employees").Select("last_name").WhereIn("job_id")
-  QUERY name=a content= a = new Query("employees").Select("last_name").WhereIn("job_id") valid=[]
-  FEEDBACK: [When using WhereIn function ParameterList must be used or be valid in query: a]
-  VALIDAFTER: [new Query, Select, WhereIn] 
+  STATEMENT a: Query[employees] Select[last_name] WhereIn[job_id]
+  ERROR: When using WhereIn function ParameterList must be used right after it in query: a
 SOURCE: var a = new Query("employees").Select("last_name").ParameterList("IT_PROG")
-  QUERY name=a content= a = new Query("employees").Select("last_name").ParameterList("IT_PROG") valid=[]
-  FEEDBACK: [ParameterList can only be used if WhereIn function is used and or is valid in query: a]
-  VALIDAFTER: [new Query, Select, ParameterList] 
-SOURCE: var a = new Query("jobs").Select("job_title").Join("jobs").On("jobs.job_id","=","employees.job_id")
-  QUERY name=a content= a = new Query("jobs").Select("job_title").Join("jobs").On("jobs.job_id","=","employees.job_id") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Join, On] 
-SOURCE: var a = new Query("jobs").Select("job_title").Join("jobs")
-  QUERY name=a content= a = new Query("jobs").Select("job_title").Join("jobs") valid=[]
-  FEEDBACK: [When using Join function On must be used or be valid in query: a]
-  VALIDAFTER: [new Query, Select, Join] 
+  STATEMENT a: Query[employees] Select[last_name] ParameterList[IT_PROG]
+  ERROR: ParameterList can only be used right after WhereIn function in query: a
+SOURCE: var a = new Query("employees").Select("last_name").WhereIn("job_id").OrderBy("last_name").ParameterList("IT_PROG")
+  STATEMENT a: Query[employees] Select[last_name] WhereIn[job_id] OrderBy[last_name] ParameterList[IT_PROG]
+  ERROR: When using WhereIn function ParameterList must be used right after it in query: a
+  ERROR: ParameterList can only be used right after WhereIn function in query: a
+SOURCE: var a = new Query("jobs").Select("job_title").Join("employees").On("jobs.job_id","=","employees.job_id")
+  STATEMENT a: Query[jobs] Select[job_title] Join[employees] On[jobs.job_id, =, employees.job_id]
+SOURCE: var a = new Query("jobs").Select("job_title").Join("employees")
+  STATEMENT a: Query[jobs] Select[job_title] Join[employees]
+  ERROR: When using Join function On must be used right after it in query: a
 SOURCE: var a = new Query("jobs").Select("job_title").On("jobs.job_id","=","employees.job_id")
-  QUERY name=a content= a = new Query("jobs").Select("job_title").On("jobs.job_id","=","employees.job_id") valid=[]
-  FEEDBACK: [On can only be used if Join function is used and or is valid in query: a]
-  VALIDAFTER: [new Query, Select, On] 
+  STATEMENT a: Query[jobs] Select[job_title] On[jobs.job_id, =, employees.job_id]
+  ERROR: On can only be used right after Join function in query: a
 SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Count, GroupBy] 
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id]
 SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Count, GroupBy, Having] 
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id] Having[br, >, 5]
 SOURCE: var a = new Query("employees").Select("job_id").Having("br",">","5")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Having("br",">","5") valid=[]
-  FEEDBACK: [No valid aggregation arguments/functions found but has having (having can only use aggregation function alias query: a]
-  VALIDAFTER: [new Query, Select, Having] 
+  STATEMENT a: Query[employees] Select[job_id] Having[br, >, 5]
+  ERROR: No valid aggregation arguments/functions found but has having (having can only use aggregation function alias) query: a
 SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").AndHaving("br","<","9")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").AndHaving("br","<","9") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Count, GroupBy, Having, AndHaving] 
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id] Having[br, >, 5] AndHaving[br, <, 9]
 SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").OrHaving("br","<","9")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").OrHaving("br","<","9") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, Count, GroupBy, Having, OrHaving] 
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id] Having[br, >, 5] OrHaving[br, <, 9]
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").AndHaving("br","<","9")
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id] AndHaving[br, <, 9]
+  ERROR: Cant use AndHaving and or OrHaving if having is not declared query: a
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("job_id",">","5")
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br] GroupBy[job_id] Having[job_id, >, 5]
+  ERROR: When using having andhaving orhaving only aggregation aliases can be used, found: job_id in query: a
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees").GroupBy("job_id").Having("br",">","5")
+  STATEMENT a: Query[employees] Select[job_id] Count[employees] GroupBy[job_id] Having[br, >, 5]
+  ERROR: When using having aggregation function(Count) must contain alias in query: a
+  ERROR: When using having andhaving orhaving only aggregation aliases can be used, found: br in query: a
 SOURCE: var a = new Query("employees").Select("min_salary").Avg("min_salary","prosek")
-  QUERY name=a content= a = new Query("employees").Select("min_salary").Avg("min_salary","prosek") valid=[]
-  FEEDBACK: [GroupBy function is not declared and or is wrong -- Non Aggregation elements must me in GroupBY query: a]
-  VALIDAFTER: [new Query, Select, Avg] 
-SOURCE: var a = new Query("employees").Select("min_salary").Max("min_salary","maks")
-  QUERY name=a content= a = new Query("employees").Select("min_salary").Max("min_salary","maks") valid=[]
-  FEEDBACK: [GroupBy function is not declared and or is wrong -- Non Aggregation elements must me in GroupBY query: a]
-  VALIDAFTER: [new Query, Select, Max] 
-SOURCE: var a = new Query("employees").Select("min_salary").Min("min_salary","mini")
-  QUERY name=a content= a = new Query("employees").Select("min_salary").Min("min_salary","mini") valid=[]
-  FEEDBACK: [GroupBy function is not declared and or is wrong -- Non Aggregation elements must me in GroupBY query: a]
-  VALIDAFTER: [new Query, Select, Min] 
+  STATEMENT a: Query[employees] Select[min_salary] Avg[min_salary, prosek]
+  ERROR: GroupBy function is not declared -- Non Aggregation elements must be in GroupBy query: a
+SOURCE: var a = new Query("employees").Max("min_salary","maks")
+  STATEMENT a: Query[employees] Max[min_salary, maks]
+SOURCE: var a = new Query("employees").Min("min_salary")
+  STATEMENT a: Query[employees] Min[min_salary]
+SOURCE: var a = new Query("employees").Select("hire_date").Date("17/06/2003","d").Where("hire_date",">","d")
+  STATEMENT a: Query[employees] Select[hire_date] Date[17/06/2003, d] Where[hire_date, >, d]
 SOURCE: var a = new Query("employees").Select("hire_date").Date("hire_date","17/06/2003")
-  QUERY name=a content= a = new Query("employees").Select("hire_date").Date("hire_date","17/06/2003") valid=[]
-  FEEDBACK: [Date argument (1st) needs to be in the following format: dd/mm/yyyy for query: a]
-  VALIDAFTER: [new Query, Select] 
+  STATEMENT a: Query[employees] Select[hire_date] Date[hire_date, 17/06/2003]
+  ERROR: Invalid alias: 17/06/2003 for function: Date
+SOURCE: var a = new Query("employees").Select("hire_date").Date("2003-06-17","d")
+  STATEMENT a: Query[employees] Select[hire_date] Date[2003-06-17, d]
+  ERROR: Date argument (1st) needs to be a real date in the following format: dd/mm/yyyy for query: a
+SOURCE: var a = new Query("employees").Select("hire_date").Date("31/02/2003","d")
+  STATEMENT a: Query[employees] Select[hire_date] Date[31/02/2003, d]
+  ERROR: Date argument (1st) needs to be a real date in the following format: dd/mm/yyyy for query: a
 SOURCE: var a = new Query("employees").Select("last_name").WhereStartsWith("last_name","A")
-  QUERY name=a content= a = new Query("employees").Select("last_name").WhereStartsWith("last_name","A") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, WhereStartsWith] 
+  STATEMENT a: Query[employees] Select[last_name] WhereStartsWith[last_name, A]
 SOURCE: var a = new Query("employees").Select("last_name").WhereEndsWith("last_name","z")
-  QUERY name=a content= a = new Query("employees").Select("last_name").WhereEndsWith("last_name","z") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, WhereEndsWith] 
+  STATEMENT a: Query[employees] Select[last_name] WhereEndsWith[last_name, z]
 SOURCE: var a = new Query("employees").Select("last_name").WhereContains("last_name","an")
-  QUERY name=a content= a = new Query("employees").Select("last_name").WhereContains("last_name","an") valid=[]
-  FEEDBACK: []
-  VALIDAFTER: [new Query, Select, WhereContains] 
+  STATEMENT a: Query[employees] Select[last_name] WhereContains[last_name, an]
+SOURCE: var a = new Query("employees").Select("last_name").AndWhere("job_id","=","IT_PROG")
+  STATEMENT a: Query[employees] Select[last_name] AndWhere[job_id, =, IT_PROG]
+  ERROR: Cant use AndWhere and or OrWhere if where is not declared query: a
 SOURCE: var a = new Query("jobs").Select("job_id") var b = new Query("employees").Select("job_id").WhereInQ("job_id","a")
-  QUERY name=a content= a = new Query("jobs").Select("job_id")  valid=[]
-  QUERY name=b content= b = new Query("employees").Select("job_id").WhereInQ("job_id","a") valid=[]
-  FEEDBACK: [Query: "a" not found for query: b]
-  VALIDAFTER: [new Query, Select] [new Query, Select, WhereInQ] 
-SOURCE: var a = new Query("jobs").Select("job_id") var b = new Query("employees").Select("job_id").WhereEqQ("job_id","a")
-  QUERY name=a content= a = new Query("jobs").Select("job_id")  valid=[]
-  QUERY name=b content= b = new Query("employees").Select("job_id").WhereEqQ("job_id","a") valid=[]
-  FEEDBACK: [Query: "a" not found for query: b]
-  VALIDAFTER: [new Query, Select] [new Query, Select, WhereEqQ] 
+  STATEMENT a: Query[jobs] Select[job_id]
+  STATEMENT b: Query[employees] Select[job_id] WhereInQ[job_id, a]
+SOURCE: var a = new Query("jobs").Select("job_id")\nvar b = new Query("employees").Select("job_id").WhereEqQ("job_id","a")
+  STATEMENT a: Query[jobs] Select[job_id]
+  STATEMENT b: Query[employees] Select[job_id] WhereEqQ[job_id, a]
 SOURCE: var b = new Query("employees").Select("job_id").WhereInQ("job_id","zzz")
-  QUERY name=b content= b = new Query("employees").Select("job_id").WhereInQ("job_id","zzz") valid=[]
-  FEEDBACK: [Query: "zzz" not found for query: b]
-  VALIDAFTER: [new Query, Select, WhereInQ] 
+  STATEMENT b: Query[employees] Select[job_id] WhereInQ[job_id, zzz]
+  ERROR: Query: zzz must be declared before query: b
+SOURCE: var b = new Query("employees").WhereInQ("job_id","a") var a = new Query("jobs").Select("job_id")
+  STATEMENT b: Query[employees] WhereInQ[job_id, a]
+  STATEMENT a: Query[jobs] Select[job_id]
+  ERROR: Query: a must be declared before query: b
+SOURCE: var a = new Query("jobs") var a = new Query("employees")
+  STATEMENT a: Query[jobs]
+  ERROR: Variables can not have the same name: a
 SOURCE: new Query("departments").Select("manager_id")
-  FEEDBACK: [No variables declared]
-  VALIDAFTER: 
+  ERROR: No variables declared
 SOURCE: 
-  FEEDBACK: [No variables declared]
-  VALIDAFTER: 
+  ERROR: No variables declared
+SOURCE: x var a = new Query("departments")
+  ERROR: First query missing var
 SOURCE: var a = new Query("departments"
-  QUERY name=a content= a = new Query("departments" valid=[]
-  FEEDBACK: [Missing ) for function:  new Query("departments"]
-  VALIDAFTER: [] 
+  ERROR: Missing ) for function: Query
 SOURCE: var a = new Query().Select()
-  QUERY name=a content= a = new Query().Select() valid=[]
-  FEEDBACK: [Function can not have zero arguments for function: new Query, Function can not have zero arguments for function: Select]
-  VALIDAFTER: [] 
+  STATEMENT a: Query[] Select[]
+  ERROR: Function can not have zero arguments for function: Query
+  ERROR: Function can not have zero arguments for function: Select
 SOURCE: var a = new Query("departments").Select()
-  QUERY name=a content= a = new Query("departments").Select() valid=[]
-  FEEDBACK: [Function can not have zero arguments for function: Select]
-  VALIDAFTER: [new Query] 
+  STATEMENT a: Query[departments] Select[]
+  ERROR: Function can not have zero arguments for function: Select
 SOURCE: var 1a = new Query("departments").Select("manager_id")
-  FEEDBACK: [Variable name cant start with special characters or numbers statement no: 1]
-  VALIDAFTER: 
+  ERROR: Variable name cant start with special characters or numbers statement no: 1
+SOURCE: var = new Query("departments")
+  ERROR: Var name not specified for statement no: 1
+SOURCE: var a new Query("departments")
+  ERROR: Missing = after variable name: a
+SOURCE: var a = Query("departments")
+  ERROR: Missing keyword new in query: a
+SOURCE: var a = new Select("manager_id")
+  ERROR: Query must start with new Query(...) in query: a
 SOURCE: var a = new Query("departments").Bogus("x")
-  QUERY name=a content= a = new Query("departments").Bogus("x") valid=[]
-  FEEDBACK: [Unknown function: Bogus]
-  VALIDAFTER: [new Query] 
-SOURCE: var a = new Query("employees").Select("hire_date").Date("hire_date","2003-06-17")
-  QUERY name=a content= a = new Query("employees").Select("hire_date").Date("hire_date","2003-06-17") valid=[]
-  FEEDBACK: [Date argument (1st) needs to be in the following format: dd/mm/yyyy for query: a]
-  VALIDAFTER: [new Query, Select] 
+  ERROR: Unknown function: Bogus
+SOURCE: var a = new Query("departments").Select("manager_id") OrderBy("manager_id")
+  ERROR: Missing . operator after function: Select
+SOURCE: var a = new Query("departments").Select(manager_id)
+  ERROR: Text arguments need to be surrounded by quotes: manager_id for function: Select
+SOURCE: var a = new Query("departments").Select("manager_id" "location_id")
+  ERROR: Problem with quotes and or , operator for function: Select
+SOURCE: var a = new Query("departments").Select("manager_id)
+  ERROR: Missing closing quote for string starting at position 41
+SOURCE: var a = new Query("departments").Where("manager_id","=")
+  STATEMENT a: Query[departments] Where[manager_id, =]
+  ERROR: Expected 3 arguments but got: 2 for function: Where
+SOURCE: var a = new Query("departments").Where("manager_id","; DROP","1")
+  STATEMENT a: Query[departments] Where[manager_id, ; DROP, 1]
+  ERROR: Unsupported operator: ; DROP for function: Where
+SOURCE: var a = new Query("departments; DROP TABLE x").Select("manager id")
+  STATEMENT a: Query[departments; DROP TABLE x] Select[manager id]
+  ERROR: Invalid table: departments; DROP TABLE x for function: Query
+  ERROR: Invalid column: manager id for function: Select
+SOURCE: var a = new Query("employees").Select("variable").Where("last_name","=","var x) = .Where(")
+  STATEMENT a: Query[employees] Select[variable] Where[last_name, =, var x) = .Where(]
 SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br")
-  QUERY name=a content= a = new Query("employees").Select("job_id").Count("employees","br") valid=[]
-  FEEDBACK: [GroupBy function is not declared and or is wrong -- Non Aggregation elements must me in GroupBY query: a]
-  VALIDAFTER: [new Query, Select, Count] 
+  STATEMENT a: Query[employees] Select[job_id] Count[employees, br]
+  ERROR: GroupBy function is not declared -- Non Aggregation elements must be in GroupBy query: a
 SOURCE: var a = new Query("employees").Select("job_id","last_name").Count("employees","br").GroupBy("job_id")
-  QUERY name=a content= a = new Query("employees").Select("job_id","last_name").Count("employees","br").GroupBy("job_id") valid=[]
-  FEEDBACK: ["last_name" from select must be in groupBy function]
-  VALIDAFTER: [new Query, Select, Count, GroupBy] 
-CHECKVAR 0 a -> true
-CHECKVAR 0 1a -> false
-CHECKVAR 0 a_b -> true
-CHECKVAR 0  -> true
-CHECKVAR 0 abc -> true
-CHECKVAR 0 a1 -> true
-CHECKVAR 1 a -> true
-CHECKVAR 1 1a -> false
-CHECKVAR 1 a_b -> true
-CHECKVAR 1  -> true
-CHECKVAR 1 abc -> true
-CHECKVAR 1 a1 -> true
-CHECKVAR 2 a -> true
-CHECKVAR 2 1a -> false
-CHECKVAR 2 a_b -> true
-CHECKVAR 2  -> true
-CHECKVAR 2 abc -> true
-CHECKVAR 2 a1 -> true
+  STATEMENT a: Query[employees] Select[job_id, last_name] Count[employees, br] GroupBy[job_id]
+  ERROR: last_name from select must be in groupBy function

@@ -1,9 +1,9 @@
 package querybuilder.compiler;
 
-public record CompilationResult(String sql, String error) {
+public record CompilationResult(CompiledQuery query, String error) {
 
-    public static CompilationResult success(String sql) {
-        return new CompilationResult(sql, null);
+    public static CompilationResult success(CompiledQuery query) {
+        return new CompilationResult(query, null);
     }
 
     public static CompilationResult failure(String error) {

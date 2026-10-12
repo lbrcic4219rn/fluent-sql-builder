@@ -1,53 +1,58 @@
 package gui.swingimp;
 
-import lombok.Getter;
-
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
+import javax.swing.*;
+import java.awt.*;
 import java.io.Serial;
 import java.util.function.Consumer;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextArea;
-import javax.swing.WindowConstants;
-
 public class MainFrame extends JFrame {
 
-    @Serial private static final long serialVersionUID = 1L;
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private static final String CONFIRM = "confirm";
+    private static final String RUNNING = "running...";
 
     private final transient Consumer<String> onSubmit;
 
-    @Getter private final transient JTextArea queryArea = new JTextArea(20, 30);
-
-    @Getter private final transient JTable resultTable = new JTable();
+    private final JTextArea queryArea = new JTextArea(20, 40);
+    private final JTable resultTable = new JTable();
+    private final JButton confirmButton = new JButton(CONFIRM);
 
     public MainFrame(TableModel tableModel, Consumer<String> onSubmit) {
         this.onSubmit = onSubmit;
         initialise(tableModel);
     }
 
+    public void setRunning(boolean running) {
+        confirmButton.setEnabled(!running);
+        confirmButton.setText(running ? RUNNING : CONFIRM);
+    }
+
     private void initialise(TableModel tableModel) {
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setTitle("Database app");
 
-        queryArea.setForeground(new Color(0, 0, 255));
-        queryArea.setBackground(new Color(192, 192, 192));
+        queryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, queryArea.getFont().getSize()));
+        queryArea.setLineWrap(true);
+        queryArea.setWrapStyleWord(true);
 
         resultTable.setModel(tableModel);
+        resultTable.setAutoCreateRowSorter(true);
         resultTable.setPreferredScrollableViewportSize(new Dimension(500, 400));
         resultTable.setFillsViewportHeight(true);
 
-        JButton confirmButton = new JButton("confirm");
         confirmButton.addActionListener(e -> onSubmit.accept(queryArea.getText()));
 
+        JSplitPane splitPane =
+            new JSplitPane(
+                JSplitPane.HORIZONTAL_SPLIT,
+                new JScrollPane(queryArea),
+                new JScrollPane(resultTable));
+        splitPane.setResizeWeight(0.4);
+
         add(new JLabel("Enter your query: "), BorderLayout.NORTH);
-        add(queryArea, BorderLayout.WEST);
-        add(new JScrollPane(resultTable), BorderLayout.CENTER);
+        add(splitPane, BorderLayout.CENTER);
         add(confirmButton, BorderLayout.SOUTH);
 
         pack();

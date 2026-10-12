@@ -1,40 +1,75 @@
 package gui.swingimp;
 
-import resource.data.Row;
+import database.QueryResult;
 
+import javax.swing.table.AbstractTableModel;
 import java.io.Serial;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
-import javax.swing.table.DefaultTableModel;
+public class TableModel extends AbstractTableModel {
 
-public class TableModel extends DefaultTableModel {
+    @Serial
+    private static final long serialVersionUID = 1L;
 
-    @Serial private static final long serialVersionUID = 1L;
+    private transient QueryResult result = QueryResult.empty();
+    private transient List<Class<?>> columnClasses = List.of();
 
-    private transient List<Row> rows;
-
-    private void updateModel() {
-        if (rows == null || rows.isEmpty()) {
-            Vector<Object> columnV = new Vector<>();
-            Vector<Vector<Object>> dataV = new Vector<>(0);
-            setDataVector(dataV, columnV);
-            return;
+    private static List<Class<?>> columnClassesOf(QueryResult result) {
+        List<Class<?>> classes = new ArrayList<>();
+        for (int column = 0; column < result.columns().size(); column++) {
+            classes.add(columnClassOf(result, column));
         }
-
-        int columnCount = rows.getFirst().getFields().size();
-        Vector<Object> columnVector = new Vector<>(rows.getFirst().getFields().keySet());
-
-        Vector<Vector<Object>> dataVector = new Vector<>(columnCount);
-
-        for (Row row : rows) {
-            dataVector.add(new Vector<>(row.getFields().values()));
-        }
-        setDataVector(dataVector, columnVector);
+        return classes;
     }
 
-    public void setRows(List<Row> rows) {
-        this.rows = rows;
-        updateModel();
+    private static Class<?> columnClassOf(QueryResult result, int column) {
+        Class<?> found = null;
+        for (List<Object> row : result.rows()) {
+            Object value = row.get(column);
+            if (value == null) {
+                continue;
+            }
+            if (found != null && found != value.getClass()) {
+                return Object.class;
+            }
+            found = value.getClass();
+        }
+        return found == null ? Object.class : found;
+    }
+
+    public void setResult(QueryResult result) {
+        this.result = result;
+        this.columnClasses = columnClassesOf(result);
+        fireTableStructureChanged();
+    }
+
+    public void clear() {
+        setResult(QueryResult.empty());
+    }
+
+    @Override
+    public int getRowCount() {
+        return result.rows().size();
+    }
+
+    @Override
+    public int getColumnCount() {
+        return result.columns().size();
+    }
+
+    @Override
+    public String getColumnName(int column) {
+        return result.columns().get(column);
+    }
+
+    @Override
+    public Class<?> getColumnClass(int column) {
+        return columnClasses.get(column);
+    }
+
+    @Override
+    public Object getValueAt(int row, int column) {
+        return result.rows().get(row).get(column);
     }
 }

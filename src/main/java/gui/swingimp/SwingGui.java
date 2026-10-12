@@ -1,23 +1,15 @@
 package gui.swingimp;
 
 import app.AppCore;
-
+import app.QueryOutcome;
+import database.QueryResult;
 import gui.IGui;
 
-import lombok.Getter;
-
-import observer.Notification;
-import observer.enums.NotificationCode;
-
-import resource.data.Row;
-
+import javax.swing.*;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.swing.JOptionPane;
-import javax.swing.SwingWorker;
 
 public class SwingGui implements IGui {
 
@@ -26,7 +18,7 @@ public class SwingGui implements IGui {
     private final AppCore core;
     private final TableModel tableModel = new TableModel();
 
-    @Getter private MainFrame mainFrame;
+    private MainFrame mainFrame;
 
     public SwingGui(AppCore core) {
         this.core = core;
@@ -38,56 +30,42 @@ public class SwingGui implements IGui {
     }
 
     private void submit(String source) {
-        new SwingWorker<Notification, Void>() {
+        mainFrame.setRunning(true);
+        new SwingWorker<QueryOutcome, Void>() {
 
             @Override
-            protected Notification doInBackground() {
+            protected QueryOutcome doInBackground() {
                 return core.runQuery(source);
             }
 
             @Override
             protected void done() {
+                mainFrame.setRunning(false);
                 try {
-                    core.notifySubscribers(get());
+                    show(get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException e) {
                     LOGGER.log(Level.SEVERE, "Query execution failed", e);
+                    tableModel.clear();
                     showMessage(String.valueOf(e.getCause()));
                 }
             }
         }.execute();
     }
 
-    @Override
-    public void update(Notification notification) {
-        if (notification.getCode() == NotificationCode.ERROR) {
-            tableModel.setRows(null);
-            showMessage(String.valueOf(notification.getData()));
-        } else if (notification.getCode() == NotificationCode.VALIDATOR_ERROR) {
-            tableModel.setRows(null);
-            showMessage(joinMessages(notification.getData()));
-        } else {
-            tableModel.setRows(asRows(notification.getData()));
+    private void show(QueryOutcome outcome) {
+        switch (outcome) {
+            case QueryOutcome.Success(QueryResult result) -> tableModel.setResult(result);
+            case QueryOutcome.Invalid(List<String> errors) -> {
+                tableModel.clear();
+                showMessage(String.join("\n", errors));
+            }
+            case QueryOutcome.Failed(String message) -> {
+                tableModel.clear();
+                showMessage(message);
+            }
         }
-    }
-
-    private String joinMessages(Object data) {
-        if (!(data instanceof List<?> messages)) {
-            return String.valueOf(data);
-        }
-        StringBuilder fullMessage = new StringBuilder();
-        for (Object message : messages) {
-            fullMessage.append(message).append('\n');
-        }
-        return fullMessage.toString();
-    }
-
-    private List<Row> asRows(Object data) {
-        if (data instanceof List<?> list) {
-            return list.stream().filter(Row.class::isInstance).map(Row.class::cast).toList();
-        }
-        return List.of();
     }
 
     private void showMessage(String message) {

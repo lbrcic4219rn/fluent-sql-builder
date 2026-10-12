@@ -1,44 +1,104 @@
-CASE [Query, Select]
-  RESULT: SELECT manager_id, location_id FROM departments 
-CASE [Query, Select, OrderBy]
-  RESULT: SELECT manager_id FROM departments ORDER BY manager_id 
-CASE [Query, Select, OrderByDesc]
-  RESULT: SELECT last_name FROM employees ORDER BY last_name  DESC 
-CASE [Query, Select, Where]
-  RESULT: SELECT last_name FROM employees WHERE job_id = IT_PROG 
-CASE [Query, Select, Where, AndWhere]
-  RESULT: SELECT last_name FROM employees WHERE job_id = IT_PROG AND manager_id = 100 
-CASE [Query, Select, Where, OrWhere]
-  RESULT: SELECT last_name FROM employees WHERE job_id = IT_PROG OR manager_id = 100 
-CASE [Query, Select, WhereBetween]
-  RESULT: SELECT min_salary FROM employees WHERE min_salary BETWEEN  1000 AND  5000 
-CASE [Query, Select, WhereIn]
-  RESULT: SELECT last_name FROM employees WHERE job_id IN (IT_PROG, SA_REP) 
-CASE [Query, Select, Join]
-  RESULT: SELECT job_title FROM jobs JOIN employees ON jobs.job_id=employees.job_id 
-CASE [Query, Select, Count, GroupBy]
-  RESULT: SELECT job_id , COUNT(employees) AS br FROM employees GROUP BY job_id 
-CASE [Query, Select, Count, GroupBy, Having]
-  RESULT: SELECT job_id , COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > 5 
-CASE [Query, Select, Count, GroupBy, Having, AndHaving]
-  RESULT: SELECT job_id , COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > 5 AND COUNT(employees) < 9
-CASE [Query, Select, Count, GroupBy, Having, OrHaving]
-  RESULT: SELECT job_id , COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > 5 OR COUNT(employees) < 9
-CASE [Query, Select, Avg]
-  RESULT: SELECT min_salary , AVG(min_salary) AS prosek FROM employees 
-CASE [Query, Select, Max]
-  RESULT: SELECT min_salary , MAX(min_salary) AS maks FROM employees 
-CASE [Query, Select, Min]
-  RESULT: SELECT min_salary , MIN(min_salary) AS mini FROM employees 
-CASE [Query, Select, WhereStartsWith]
-  RESULT: SELECT last_name FROM employees WHERE last_name LIKE 'A%'
-CASE [Query, Select, WhereEndsWith]
-  RESULT: SELECT last_name FROM employees WHERE last_name LIKE '%z'
-CASE [Query, Select, WhereContains]
-  RESULT: SELECT last_name FROM employees WHERE last_name LIKE '%an%'
-CASE [Query, Select, Join]
-  RESULT: null
-CASE [Select]
-  RESULT: SELECT last_name 
-CASE [Query, Select, Date]
-  RESULT: SELECT hire_date FROM employees 
+SOURCE: var a = new Query("departments")
+  SQL: SELECT * FROM departments
+  PARAMS: []
+SOURCE: var a = new Query("departments").Select("manager_id","location_id")
+  SQL: SELECT manager_id, location_id FROM departments
+  PARAMS: []
+SOURCE: var a = new Query("departments").Select("manager_id").OrderBy("manager_id")
+  SQL: SELECT manager_id FROM departments ORDER BY manager_id
+  PARAMS: []
+SOURCE: var a = new Query("employees").Select("last_name").OrderByDesc("last_name")
+  SQL: SELECT last_name FROM employees ORDER BY last_name DESC
+  PARAMS: []
+SOURCE: var a = new Query("employees").OrderByDesc("last_name","first_name").OrderBy("salary")
+  SQL: SELECT * FROM employees ORDER BY last_name DESC, first_name DESC, salary
+  PARAMS: []
+SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG")
+  SQL: SELECT last_name FROM employees WHERE job_id = ?
+  PARAMS: [IT_PROG]
+SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").AndWhere("manager_id","=","100")
+  SQL: SELECT last_name FROM employees WHERE job_id = ? AND manager_id = ?
+  PARAMS: [IT_PROG, 100]
+SOURCE: var a = new Query("employees").Select("last_name").Where("job_id","=","IT_PROG").OrWhere("manager_id","=",100)
+  SQL: SELECT last_name FROM employees WHERE job_id = ? OR manager_id = ?
+  PARAMS: [IT_PROG, 100]
+SOURCE: var a = new Query("employees").Where("last_name","=","De Haan")
+  SQL: SELECT * FROM employees WHERE last_name = ?
+  PARAMS: [De Haan]
+SOURCE: var a = new Query("employees").Where("last_name","like","a, b) \"c\"")
+  SQL: SELECT * FROM employees WHERE last_name LIKE ?
+  PARAMS: [a, b) "c"]
+SOURCE: var a = new Query("employees").Where("job_id","=","IT_PROG").WhereContains("last_name","an").WhereBetween("salary",1000,5000.5)
+  SQL: SELECT * FROM employees WHERE job_id = ? AND last_name LIKE ? AND salary BETWEEN ? AND ?
+  PARAMS: [IT_PROG, %an%, 1000, 5000.5]
+SOURCE: var a = new Query("employees").Select("min_salary").WhereBetween("min_salary","1000","5000")
+  SQL: SELECT min_salary FROM employees WHERE min_salary BETWEEN ? AND ?
+  PARAMS: [1000, 5000]
+SOURCE: var a = new Query("employees").Select("last_name").WhereIn("job_id").ParameterList("IT_PROG","SA_REP")
+  SQL: SELECT last_name FROM employees WHERE job_id IN (?, ?)
+  PARAMS: [IT_PROG, SA_REP]
+SOURCE: var a = new Query("employees").Select("last_name").WhereIn("job_id")
+  ERROR: WhereIn must be followed by ParameterList in query: a
+SOURCE: var a = new Query("jobs").Select("job_title").Join("employees").On("jobs.job_id","=","employees.job_id")
+  SQL: SELECT job_title FROM jobs JOIN employees ON jobs.job_id = employees.job_id
+  PARAMS: []
+SOURCE: var a = new Query("jobs").Join("employees").On("jobs.job_id","=","employees.job_id").Join("departments").On("employees.department_id","=","departments.department_id").Where("jobs.min_salary",">","1000")
+  SQL: SELECT * FROM jobs JOIN employees ON jobs.job_id = employees.job_id JOIN departments ON employees.department_id = departments.department_id WHERE jobs.min_salary > ?
+  PARAMS: [1000]
+SOURCE: var a = new Query("jobs").Select("job_title").Join("employees")
+  ERROR: Join must be followed by On in query: a
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id")
+  SQL: SELECT job_id, COUNT(employees) AS br FROM employees GROUP BY job_id
+  PARAMS: []
+SOURCE: var a = new Query("employees").Select("job_id","manager_id").Count("*","br").GroupBy("job_id","manager_id")
+  SQL: SELECT job_id, manager_id, COUNT(*) AS br FROM employees GROUP BY job_id, manager_id
+  PARAMS: []
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5")
+  SQL: SELECT job_id, COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > ?
+  PARAMS: [5]
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").AndHaving("br","<","9")
+  SQL: SELECT job_id, COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > ? AND COUNT(employees) < ?
+  PARAMS: [5, 9]
+SOURCE: var a = new Query("employees").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").OrHaving("br","<","9")
+  SQL: SELECT job_id, COUNT(employees) AS br FROM employees GROUP BY job_id HAVING COUNT(employees) > ? OR COUNT(employees) < ?
+  PARAMS: [5, 9]
+SOURCE: var a = new Query("employees").Where("salary",">","100").Select("job_id").Count("employees","br").GroupBy("job_id").Having("br",">","5").OrderBy("br")
+  SQL: SELECT job_id, COUNT(employees) AS br FROM employees WHERE salary > ? GROUP BY job_id HAVING COUNT(employees) > ? ORDER BY br
+  PARAMS: [100, 5]
+SOURCE: var a = new Query("employees").Select("job_id").GroupBy("job_id").Having("br",">","5")
+  ERROR: Unknown aggregation alias: br in query: a
+SOURCE: var a = new Query("employees").Select("min_salary").Avg("min_salary","prosek")
+  SQL: SELECT min_salary, AVG(min_salary) AS prosek FROM employees
+  PARAMS: []
+SOURCE: var a = new Query("employees").Max("min_salary","maks")
+  SQL: SELECT MAX(min_salary) AS maks FROM employees
+  PARAMS: []
+SOURCE: var a = new Query("employees").Min("min_salary").Max("min_salary")
+  SQL: SELECT MIN(min_salary), MAX(min_salary) FROM employees
+  PARAMS: []
+SOURCE: var a = new Query("employees").Select("last_name").WhereStartsWith("last_name","A")
+  SQL: SELECT last_name FROM employees WHERE last_name LIKE ?
+  PARAMS: [A%]
+SOURCE: var a = new Query("employees").Select("last_name").WhereEndsWith("last_name","z")
+  SQL: SELECT last_name FROM employees WHERE last_name LIKE ?
+  PARAMS: [%z]
+SOURCE: var a = new Query("employees").Select("last_name").WhereContains("last_name","an")
+  SQL: SELECT last_name FROM employees WHERE last_name LIKE ?
+  PARAMS: [%an%]
+SOURCE: var a = new Query("employees").Select("last_name").WhereContains("last_name","50%_")
+  SQL: SELECT last_name FROM employees WHERE last_name LIKE ?
+  PARAMS: [%50\%\_%]
+SOURCE: var a = new Query("employees").Select("hire_date").Date("17/06/2003","d").Where("hire_date",">","d")
+  SQL: SELECT hire_date FROM employees WHERE hire_date > TO_DATE(?, 'DD/MM/YYYY')
+  PARAMS: [17/06/2003]
+SOURCE: var a = new Query("employees").Date("17/06/2003","from").Date("17/06/2005","to").WhereBetween("hire_date","from","to")
+  SQL: SELECT * FROM employees WHERE hire_date BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')
+  PARAMS: [17/06/2003, 17/06/2005]
+SOURCE: var a = new Query("jobs").Select("job_id").Where("min_salary",">","1000") var b = new Query("employees").Select("job_id").Where("salary","<","9000").WhereInQ("job_id","a").AndWhere("manager_id","=","100")
+  SQL: SELECT job_id FROM employees WHERE salary < ? AND job_id IN (SELECT job_id FROM jobs WHERE min_salary > ?) AND manager_id = ?
+  PARAMS: [9000, 1000, 100]
+SOURCE: var a = new Query("jobs").Max("min_salary") var b = new Query("employees").Select("last_name").WhereEqQ("salary","a")
+  SQL: SELECT last_name FROM employees WHERE salary = (SELECT MAX(min_salary) FROM jobs)
+  PARAMS: []
+SOURCE: var b = new Query("employees").Select("job_id").WhereInQ("job_id","zzz")
+  ERROR: Query: zzz must be declared before query: b

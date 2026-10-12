@@ -1,10 +1,10 @@
 package querybuilder.compiler;
 
-import querybuilder.validator.Query;
+import querybuilder.parser.Statement;
 
 import java.util.List;
 
 public interface ICompiler {
 
-    CompilationResult compile(List<Query> queries);
+    CompilationResult compile(List<Statement> statements);
 }

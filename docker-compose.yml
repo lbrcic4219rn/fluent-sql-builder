@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: bp-postgres
+    ports:
+      - "${BP_POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${BP_POSTGRES_DATABASE:-bp2021_t1}
+      POSTGRES_USER: ${BP_POSTGRES_USERNAME:-bp}
+      POSTGRES_PASSWORD: ${BP_POSTGRES_PASSWORD:?set BP_POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  postgres_data:

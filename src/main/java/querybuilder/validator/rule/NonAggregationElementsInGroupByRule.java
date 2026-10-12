@@ -1,62 +1,48 @@
 package querybuilder.validator.rule;
 
-import querybuilder.validator.Query;
-import querybuilder.validator.Validator;
+import querybuilder.parser.Call;
+import querybuilder.parser.FunctionType;
+import querybuilder.parser.Statement;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public class NonAggregationElementsInGroupByRule implements IRule {
 
-    private static final String COUNT = "Count";
-    private static final String SELECT = "Select";
-    private static final String GROUP_BY = "GroupBy";
-    private static final List<String> AGGREGATIONS = List.of("Avg", COUNT, "Min", "Max");
-
     @Override
-    public void checkRule(
-            Query query, Map<String, Integer> supportedFunctions, Validator validator) {
-        String content = query.getContent();
-        List<String> valid = query.getValidFunctions();
+    public List<String> check(Statement statement, Set<String> declaredQueries) {
+        List<String> errors = new ArrayList<>();
+        if (!statement.hasAny(FunctionType::isAggregation)) {
+            return errors;
+        }
 
-        List<String> aggregationArguments = new ArrayList<>();
-        for (String aggregation : AGGREGATIONS) {
-            if (valid.contains(aggregation)) {
-                aggregationArguments.addAll(
-                        Arrays.asList(FunctionArguments.of(content, aggregation)));
+        List<String> selected = argumentsOf(statement, FunctionType.SELECT);
+        if (selected.isEmpty()) {
+            return errors;
+        }
+        if (statement.callsOf(FunctionType.GROUP_BY).isEmpty()) {
+            errors.add(
+                "GroupBy function is not declared -- Non Aggregation elements must be in"
+                    + " GroupBy query: "
+                    + statement.name());
+            return errors;
+        }
+
+        List<String> grouped = argumentsOf(statement, FunctionType.GROUP_BY);
+        for (String column : selected) {
+            if (!grouped.contains(column)) {
+                errors.add(column + " from select must be in groupBy function");
             }
         }
-        if (aggregationArguments.isEmpty()) {
-            return;
-        }
-        if (!valid.contains(SELECT)) {
-            validator.pushFeedback(
-                    "Select Function is not declared and or is wrong -- Non Aggregation elements"
-                            + " must me in GroupBY query: "
-                            + query.getName());
-            return;
-        }
-        if (!valid.contains(GROUP_BY)) {
-            validator.pushFeedback(
-                    "GroupBy function is not declared and or is wrong -- Non Aggregation elements"
-                            + " must me in GroupBY query: "
-                            + query.getName());
-            return;
-        }
+        return errors;
+    }
 
-        List<String> selectArguments =
-                new ArrayList<>(Arrays.asList(FunctionArguments.of(content, SELECT)));
-        for (String aggregationArgument : aggregationArguments) {
-            selectArguments.remove(aggregationArgument);
+    private List<String> argumentsOf(Statement statement, FunctionType type) {
+        List<String> arguments = new ArrayList<>();
+        for (Call call : statement.callsOf(type)) {
+            arguments.addAll(call.texts());
         }
-
-        List<String> groupByArguments = Arrays.asList(FunctionArguments.of(content, GROUP_BY));
-        for (String selectArgument : selectArguments) {
-            if (!groupByArguments.contains(selectArgument)) {
-                validator.pushFeedback(selectArgument + " from select must be in groupBy function");
-            }
-        }
+        return arguments;
     }
 }

@@ -1,15 +1,18 @@
 package querybuilder;
 
+import querybuilder.compiler.CompiledQuery;
+
 import java.util.List;
 
-public record QueryBuildResult(String sql, List<String> validationErrors, String compileError) {
+public record QueryBuildResult(
+    CompiledQuery query, List<String> validationErrors, String compileError) {
 
     public QueryBuildResult {
         validationErrors = List.copyOf(validationErrors);
     }
 
-    public static QueryBuildResult compiled(String sql) {
-        return new QueryBuildResult(sql, List.of(), null);
+    public static QueryBuildResult compiled(CompiledQuery query) {
+        return new QueryBuildResult(query, List.of(), null);
     }
 
     public static QueryBuildResult invalid(List<String> validationErrors) {
@@ -21,6 +24,6 @@ public record QueryBuildResult(String sql, List<String> validationErrors, String
     }
 
     public boolean isSuccess() {
-        return sql != null;
+        return query != null;
     }
 }

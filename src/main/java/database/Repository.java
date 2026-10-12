@@ -1,12 +1,10 @@
 package database;
 
-import resource.data.Row;
-
 import java.util.List;
 
 public interface Repository extends AutoCloseable {
 
-    List<Row> get(String sqlQuery);
+    QueryResult query(String sql, List<String> parameters);
 
     @Override
     void close();

@@ -5,5 +5,4 @@ out/
 .idea/
 .DS_Store
 *.zip
-.scannerwork/
 .env

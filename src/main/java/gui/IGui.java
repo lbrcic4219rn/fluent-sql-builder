@@ -1,7 +1,5 @@
 package gui;
 
-import observer.Subscriber;
-
-public interface IGui extends Subscriber {
+public interface IGui {
     void start();
 }

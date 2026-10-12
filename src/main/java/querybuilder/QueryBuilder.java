@@ -21,10 +21,10 @@ public class QueryBuilder implements IQueryBuilder {
         if (!validation.isValid()) {
             return QueryBuildResult.invalid(validation.errors());
         }
-        CompilationResult compilation = compiler.compile(validation.queries());
+        CompilationResult compilation = compiler.compile(validation.statements());
         if (!compilation.isSuccess()) {
             return QueryBuildResult.failed(compilation.error());
         }
-        return QueryBuildResult.compiled(compilation.sql());
+        return QueryBuildResult.compiled(compilation.query());
     }
 }

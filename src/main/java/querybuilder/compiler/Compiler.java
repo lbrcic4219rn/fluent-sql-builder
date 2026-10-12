@@ -1,182 +1,202 @@
 package querybuilder.compiler;
 
-import querybuilder.validator.Query;
+import querybuilder.parser.Call;
+import querybuilder.parser.FunctionType;
+import querybuilder.parser.Statement;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Compiler implements ICompiler {
 
-    private static final String SELECT = "Select";
-    private static final String COUNT = "Count";
-    private static final Set<String> ALIAS_FUNCTIONS = Set.of("Avg", COUNT, "Min", "Max", "Date");
-    private static final String JOIN_TABLE_MISMATCH =
-            "In Join() must be the same table name as in Query()";
+    private static final String AND = "AND";
+    private static final String OR = "OR";
     private static final String NOTHING_TO_COMPILE = "No query to compile";
+    private static final Set<FunctionType> APPLIED_BY_OTHER_CALLS =
+        EnumSet.of(FunctionType.ON, FunctionType.PARAMETER_LIST, FunctionType.DATE);
 
     @Override
-    public CompilationResult compile(List<Query> queries) {
-        Map<String, String> queryResults = new LinkedHashMap<>();
-        String lastResult = null;
+    public CompilationResult compile(List<Statement> statements) {
+        Map<String, CompiledQuery> compiled = new HashMap<>();
+        CompiledQuery last = null;
 
-        for (Query query : queries) {
-            String result = compileQuery(query, queryResults);
-            if (result == null) {
-                return CompilationResult.failure(JOIN_TABLE_MISMATCH);
+        try {
+            for (Statement statement : statements) {
+                last = new StatementCompiler(statement, compiled).compile();
+                compiled.put(statement.name(), last);
             }
-            queryResults.put(query.getName(), result);
-            lastResult = result;
+        } catch (CompilationException e) {
+            return CompilationResult.failure(e.getMessage());
         }
 
-        if (lastResult == null) {
+        if (last == null) {
             return CompilationResult.failure(NOTHING_TO_COMPILE);
         }
-        return CompilationResult.success(lastResult);
+        return CompilationResult.success(last);
     }
 
-    String compileQuery(Query q) {
-        return compileQuery(q, Map.of());
-    }
+    private static final class StatementCompiler {
 
-    private String compileQuery(Query q, Map<String, String> queryResults) {
-        List<Function> functions = new ArrayList<>();
-        Map<String, String> aliasesValues = new LinkedHashMap<>();
-        String tableNameFromQuery = "";
-        String tableNameFromJoin = "";
+        private final Statement statement;
+        private final Map<String, CompiledQuery> compiledQueries;
+        private final Map<String, String> aggregationsByAlias = new HashMap<>();
+        private final Map<String, String> datesByAlias = new HashMap<>();
+        private final SelectQuery query = new SelectQuery();
 
-        for (String name : q.getFunctions()) {
-            Function function = createFunction(name);
-            if (function == null) {
-                continue;
+        StatementCompiler(Statement statement, Map<String, CompiledQuery> compiledQueries) {
+            this.statement = statement;
+            this.compiledQueries = compiledQueries;
+        }
+
+        CompiledQuery compile() {
+            for (Call call : statement.callsOf(FunctionType.DATE)) {
+                datesByAlias.put(call.text(1), call.text(0));
             }
-            functions.add(function);
-            function.parseQuery(q);
-            if (function instanceof QueryFunction queryFunction) {
-                tableNameFromQuery = queryFunction.getTableName();
+            for (Call call : statement.callsMatching(FunctionType::isAggregation)) {
+                if (call.arguments().size() > 1) {
+                    aggregationsByAlias.put(call.text(1), aggregation(call));
+                }
             }
-            if (function instanceof JoinFunction joinFunction) {
-                tableNameFromJoin = joinFunction.getTableName();
+
+            List<Call> calls = statement.calls();
+            for (int i = 0; i < calls.size(); i++) {
+                apply(calls.get(i), i + 1 < calls.size() ? calls.get(i + 1) : null);
             }
-            if (ALIAS_FUNCTIONS.contains(name)) {
-                aliasesValues.put(function.getAlias(), function.getRes());
-                function.setAlias("");
+            return query.build();
+        }
+
+        private void apply(Call call, Call next) {
+            if (APPLIED_BY_OTHER_CALLS.contains(call.type())) {
+                return;
             }
-        }
-
-        sortFunctions(functions);
-
-        StringBuilder result = new StringBuilder();
-        if (!functions.getFirst().getName().equalsIgnoreCase(SELECT)) {
-            result.append("SELECT * ");
-        }
-        if (!tableNameFromJoin.isEmpty()
-                && !tableNameFromJoin.equalsIgnoreCase(tableNameFromQuery)) {
-            return null;
-        }
-
-        for (Function f : functions) {
-            appendFunction(result, f, aliasesValues, queryResults);
-        }
-        return result.toString();
-    }
-
-    private void appendFunction(
-            StringBuilder result,
-            Function f,
-            Map<String, String> aliasesValues,
-            Map<String, String> queryResults) {
-        if (isAggregation(f) && !result.toString().equalsIgnoreCase("SELECT ")) {
-            result.append(", ");
-        }
-        resolveAlias(f, aliasesValues);
-        if (f instanceof DateFunction) {
-            return;
-        }
-        result.append(f.getRes());
-        if (f instanceof WhereInQFunction wif) {
-            result.append("(")
-                    .append(findQueryValueWithKey(wif.getSubQuery(), queryResults))
-                    .append(") ");
-        }
-        if (f instanceof WhereEqQFunction wef) {
-            result.append("(")
-                    .append(findQueryValueWithKey(wef.getSubQuery(), queryResults))
-                    .append(") ");
-        }
-    }
-
-    private boolean isAggregation(Function f) {
-        return f instanceof AvgFunction
-                || f instanceof MaxFunction
-                || f instanceof MinFunction
-                || f instanceof CountFunction;
-    }
-
-    private void resolveAlias(Function f, Map<String, String> aliasesValues) {
-        if (f.getAlias().isEmpty()) {
-            return;
-        }
-        String alias = f.getAlias();
-        String value = getValueFromAlias(alias, aliasesValues);
-        if (value != null) {
-            String[] strArray = value.split(" ");
-            f.setRes(f.getRes().replaceAll(alias, strArray[f.getAliasPosition()]));
-        }
-    }
-
-    private Function createFunction(String name) {
-        return switch (name) {
-            case "Query" -> new QueryFunction("Query", 3);
-            case SELECT -> new SelectFunction(SELECT, 1);
-            case "OrderBy" -> new OrderByFunction("OrderBy", 12);
-            case "OrderByDesc" -> new OrderByDescFunction("OrderByDesc", 12);
-            case "Where" -> new WhereFunction("Where", 5);
-            case "OrWhere" -> new OrWhereFunction("OrWhere", 6);
-            case "AndWhere" -> new AndWhereFunction("AndWhere", 6);
-            case "WhereBetween" -> new WhereBetweenFunction("WhereBetween", 5);
-            case "WhereIn" -> new WhereInFunction("WhereIn", 5);
-            case "Join" -> new JoinFunction("Join", 4);
-            case "WhereEndsWith" -> new WhereEndsWithFunction("WhereEndsWith", 5);
-            case "WhereStartsWith" -> new WhereStartsWithFunction("WhereStartsWith", 5);
-            case "WhereContains" -> new WhereContainsFunction("WhereContains", 5);
-            case "Avg" -> new AvgFunction("Avg", 2);
-            case COUNT -> new CountFunction(COUNT, 2);
-            case "Min" -> new MinFunction("Min", 2);
-            case "Max" -> new MaxFunction("Max", 2);
-            case "GroupBy" -> new GroupByFunction("GroupBy", 9);
-            case "Having" -> new HavingFunction("Having", 10);
-            case "AndHaving" -> new AndHavingFunction("AndHaving", 11);
-            case "OrHaving" -> new OrHavingFunction("OrHaving", 11);
-            case "WhereInQ" -> new WhereInQFunction("WhereInQ", 5);
-            case "WhereEqQ" -> new WhereEqQFunction("WhereEqQ", 5);
-            case "Date" -> new DateFunction("Date", 4);
-            default -> null;
-        };
-    }
-
-    public void sortFunctions(List<Function> functions) {
-        functions.sort(Comparator.comparingInt(Function::getPriority));
-    }
-
-    public String findQueryValueWithKey(String name, Map<String, String> queryResults) {
-        for (Map.Entry<String, String> entry : queryResults.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(name)) {
-                return entry.getValue();
+            switch (call.type()) {
+                case QUERY -> query.from(call.text(0));
+                case SELECT -> query.select(call.texts());
+                case AVG, COUNT, MIN, MAX -> query.aggregate(aliased(call));
+                case JOIN -> join(call, next);
+                case WHERE, AND_WHERE -> comparison(query.where(), AND, call.text(0), call);
+                case OR_WHERE -> comparison(query.where(), OR, call.text(0), call);
+                case WHERE_BETWEEN -> between(call);
+                case WHERE_IN -> in(call, next);
+                case WHERE_STARTS_WITH -> like(call, escapeLike(call.text(1)) + "%");
+                case WHERE_ENDS_WITH -> like(call, "%" + escapeLike(call.text(1)));
+                case WHERE_CONTAINS -> like(call, "%" + escapeLike(call.text(1)) + "%");
+                case WHERE_IN_Q -> subQuery(call, "IN");
+                case WHERE_EQ_Q -> subQuery(call, "=");
+                case GROUP_BY -> query.groupBy(call.texts());
+                case HAVING, AND_HAVING ->
+                    comparison(query.having(), AND, aggregationOf(call), call);
+                case OR_HAVING -> comparison(query.having(), OR, aggregationOf(call), call);
+                case ORDER_BY -> call.texts().forEach(query::orderBy);
+                case ORDER_BY_DESC ->
+                    call.texts().forEach(column -> query.orderBy(column + " DESC"));
+                default ->
+                    throw new CompilationException(
+                        "Unsupported function: " + call.type().keyword());
             }
         }
-        return null;
-    }
 
-    public String getValueFromAlias(String alias, Map<String, String> alVal) {
-        for (Map.Entry<String, String> entry : alVal.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(alias)) {
-                return entry.getValue();
+        private String aggregation(Call call) {
+            return call.type().keyword().toUpperCase(Locale.ROOT) + "(" + call.text(0) + ")";
+        }
+
+        private String aliased(Call call) {
+            String expression = aggregation(call);
+            return call.arguments().size() > 1 ? expression + " AS " + call.text(1) : expression;
+        }
+
+        private String aggregationOf(Call having) {
+            String expression = aggregationsByAlias.get(having.text(0));
+            if (expression == null) {
+                throw new CompilationException(
+                    "Unknown aggregation alias: "
+                        + having.text(0)
+                        + " in query: "
+                        + statement.name());
+            }
+            return expression;
+        }
+
+        private void join(Call join, Call on) {
+            requireFollower(join, on, FunctionType.ON);
+            query.join(join.text(0), on.text(0) + " " + operator(on.text(1)) + " " + on.text(2));
+        }
+
+        private void comparison(
+            ConditionList conditions, String connector, String left, Call call) {
+            List<String> parameters = new ArrayList<>();
+            String condition =
+                left + " " + operator(call.text(1)) + " " + bind(call.text(2), parameters);
+            conditions.add(connector, condition, parameters);
+        }
+
+        private void between(Call call) {
+            List<String> parameters = new ArrayList<>();
+            String low = bind(call.text(1), parameters);
+            String high = bind(call.text(2), parameters);
+            query.where().add(AND, call.text(0) + " BETWEEN " + low + " AND " + high, parameters);
+        }
+
+        private void in(Call whereIn, Call parameterList) {
+            requireFollower(whereIn, parameterList, FunctionType.PARAMETER_LIST);
+            List<String> parameters = new ArrayList<>();
+            List<String> placeholders = new ArrayList<>();
+            for (String value : parameterList.texts()) {
+                placeholders.add(bind(value, parameters));
+            }
+            query.where()
+                .add(
+                    AND,
+                    whereIn.text(0) + " IN (" + String.join(", ", placeholders) + ")",
+                    parameters);
+        }
+
+        private void like(Call call, String pattern) {
+            query.where().add(AND, call.text(0) + " LIKE ?", List.of(pattern));
+        }
+
+        private void subQuery(Call call, String operator) {
+            CompiledQuery subQuery = compiledQueries.get(call.text(1));
+            if (subQuery == null) {
+                throw new CompilationException(
+                    "Query: "
+                        + call.text(1)
+                        + " must be declared before query: "
+                        + statement.name());
+            }
+            query.where()
+                .add(
+                    AND,
+                    call.text(0) + " " + operator + " (" + subQuery.sql() + ")",
+                    subQuery.parameters());
+        }
+
+        private String bind(String value, List<String> parameters) {
+            String date = datesByAlias.get(value);
+            if (date != null) {
+                parameters.add(date);
+                return "TO_DATE(?, 'DD/MM/YYYY')";
+            }
+            parameters.add(value);
+            return "?";
+        }
+
+        private String operator(String operator) {
+            return operator.toUpperCase(Locale.ROOT);
+        }
+
+        private String escapeLike(String value) {
+            return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        }
+
+        private void requireFollower(Call leader, Call follower, FunctionType expected) {
+            if (follower == null || follower.type() != expected) {
+                throw new CompilationException(
+                    leader.type().keyword()
+                        + " must be followed by "
+                        + expected.keyword()
+                        + " in query: "
+                        + statement.name());
             }
         }
-        return null;
     }
 }

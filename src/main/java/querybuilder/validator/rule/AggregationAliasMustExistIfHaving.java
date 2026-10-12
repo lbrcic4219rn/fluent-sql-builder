@@ -1,51 +1,30 @@
 package querybuilder.validator.rule;
 
-import querybuilder.validator.Query;
-import querybuilder.validator.Validator;
+import querybuilder.parser.Call;
+import querybuilder.parser.FunctionType;
+import querybuilder.parser.Statement;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public class AggregationAliasMustExistIfHaving implements IRule {
 
-    private static final String COUNT = "Count";
-    private static final String FOUND_FOR_QUERY = " found for query: ";
-    private static final List<String> AGGREGATIONS = List.of("Avg", COUNT, "Min", "Max");
-
     @Override
-    public void checkRule(
-            Query query, Map<String, Integer> supportedFunctions, Validator validator) {
-        if (!hasAnyHaving(query)) {
-            return;
+    public List<String> check(Statement statement, Set<String> declaredQueries) {
+        List<String> errors = new ArrayList<>();
+        if (!statement.hasAny(FunctionType::isHaving)) {
+            return errors;
         }
-        for (String aggregation : AGGREGATIONS) {
-            if (query.getValidFunctions().contains(aggregation)) {
-                checkAlias(query, supportedFunctions, validator, aggregation);
+        for (Call aggregation : statement.callsMatching(FunctionType::isAggregation)) {
+            if (aggregation.arguments().size() < 2) {
+                errors.add(
+                    "When using having aggregation function("
+                        + aggregation.type().keyword()
+                        + ") must contain alias in query: "
+                        + statement.name());
             }
         }
-    }
-
-    private boolean hasAnyHaving(Query query) {
-        List<String> valid = query.getValidFunctions();
-        return valid.contains("Having")
-                || valid.contains("AndHaving")
-                || valid.contains("OrHaving");
-    }
-
-    private void checkAlias(
-            Query query,
-            Map<String, Integer> supportedFunctions,
-            Validator validator,
-            String aggregation) {
-        String[] args = FunctionArguments.of(query.getContent(), aggregation);
-        if (supportedFunctions.get(aggregation) != args.length) {
-            validator.pushFeedback(
-                    "When using having aggregation function("
-                            + aggregation
-                            + ") must contain alias--"
-                            + FOUND_FOR_QUERY
-                            + query.getName());
-            query.getValidFunctions().remove(aggregation);
-        }
+        return errors;
     }
 }
